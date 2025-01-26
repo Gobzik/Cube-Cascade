@@ -37,6 +37,7 @@ font_large = pygame.font.Font(None, 100)
 font_medium = pygame.font.Font(None, 50)
 font_small = pygame.font.Font(None, 30)
 
+
 def initialize_database():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -93,6 +94,7 @@ def initialize_database():
 
     conn.commit()
     conn.close()
+
 
 initialize_database()
 
@@ -228,7 +230,6 @@ class BackgroundCube:
         screen.blit(surface, (self.x, self.y))
 
 
-
 background_cubes = [BackgroundCube() for _ in range(75)]
 
 
@@ -264,7 +265,8 @@ class Grid:
                 if cell:
                     grid_x = x + c
                     grid_y = y + r
-                    if grid_x >= GRID_SIZE or grid_y >= GRID_SIZE or grid_x < 0 or grid_y < 0 or self.grid[grid_y][grid_x] != 0:
+                    if grid_x >= GRID_SIZE or grid_y >= GRID_SIZE or grid_x < 0 or grid_y < 0 or self.grid[grid_y][
+                        grid_x] != 0:
                         return False
         return True
 
@@ -406,36 +408,61 @@ class Grid:
         conn.close()
 
 
-def generate_level_data():
-    levels = []
-    for level_number in range(1, 11):
-        required_score = level_number * 200
-        num_obstacles = level_number * 4
-        obstacles = []
-        while len(obstacles) < num_obstacles:
-            x, y = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
-            if (x, y) not in obstacles:
-                obstacles.append((x, y))
-        levels.append({"level_number": level_number, "required_score": required_score, "obstacles": obstacles})
-    return levels
+def generate_level(self, level_number):
+    required_score = level_number * 200
+    num_obstacles = level_number * 4
+    obstacles = []
+
+    while len(obstacles) < num_obstacles:
+        x, y = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
+        if (x, y) not in obstacles:
+            obstacles.append((x, y))
+
+    return {
+        "level_number": level_number,
+        "required_score": required_score,
+        "obstacles": obstacles
+    }
 
 
 class Adventure:
     def __init__(self):
         self.current_level = 1
         self.levels = self.load_levels()
+        self.timer_running = False
+        self.start_time = 0
 
     def load_levels(self):
         levels = []
-        level_data = generate_level_data()
-        for data in level_data:
+        for level_number in range(1, 11):
+            level_data = self.generate_level(level_number)
             levels.append({
-                "level_number": data["level_number"],
-                "required_score": data["required_score"],
-                "obstacles": data["obstacles"],
-                "unlocked": data["level_number"] == 1
+                "level_number": level_data["level_number"],
+                "required_score": level_data["required_score"],
+                "obstacles": level_data["obstacles"],
+                "unlocked": level_number == 1
             })
         return levels
+
+    def generate_level(self, level_number):
+        required_score = level_number * 200
+        num_obstacles = level_number * 4
+        obstacles = []
+
+        while len(obstacles) < num_obstacles:
+            x, y = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
+            if (x, y) not in obstacles:
+                obstacles.append((x, y))
+
+        return {
+            "level_number": level_number,
+            "required_score": required_score,
+            "obstacles": obstacles
+        }
+
+    def draw_level_text(self, screen, level_number):
+        level_text = font_large.render(f"Level {level_number}", True, WHITE)
+        screen.blit(level_text, level_text.get_rect(center=(300, 40)))
 
     def start_level(self, level_number):
         if not self.levels[level_number - 1]["unlocked"]:
@@ -446,6 +473,11 @@ class Adventure:
         level_data = self.levels[level_number - 1]
         grid = Grid(obstacles=level_data["obstacles"], mode="adventure")
         required_score = level_data["required_score"]
+
+        for _ in range(4):
+            x, y = random.randint(0, GRID_SIZE - 1), random.randint(0, GRID_SIZE - 1)
+            if grid.grid[y][x] == 0:
+                grid.grid[y][x] = 1
 
         shapes = [Shape(random.choice(SHAPES)) for _ in range(3)]
         positions = [(600, 100), (600, 250), (600, 400)]
@@ -458,33 +490,33 @@ class Adventure:
         clock = pygame.time.Clock()
 
         while True:
+
             clock.tick(FPS)
+            pygame.mouse.set_visible(True)
+            mouse_pos = pygame.mouse.get_pos()
+            screen.blit(cursor_image, mouse_pos)
             draw_gradient_background(screen, DARK_BLUE, LIGHT_BLUE)
             back_to_menu_button.draw(screen, pygame.mouse.get_pos())
-
+            self.draw_level_text(screen, level_number)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     grid.save_to_database()
                     pygame.quit()
                     sys.exit()
-
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if back_to_menu_button.is_clicked(pygame.mouse.get_pos(), pygame.mouse.get_pressed()[0]):
                         grid.reset()
                         return False
-
                     for shape in shapes:
                         if shape.rect.collidepoint(event.pos):
                             dragging_shape = shape
                             offset_x = shape.rect.x - event.pos[0]
                             offset_y = shape.rect.y - event.pos[1]
                             break
-
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if dragging_shape:
                         grid_x = (dragging_shape.rect.x - 100 + CELL_SIZE // 2) // CELL_SIZE
                         grid_y = (dragging_shape.rect.y - 100 + CELL_SIZE // 2) // CELL_SIZE
-
                         if grid.can_place(dragging_shape.shape, grid_x, grid_y):
                             grid.place(dragging_shape.shape, grid_x, grid_y)
                             shapes.remove(dragging_shape)
@@ -494,9 +526,7 @@ class Adventure:
                                 for i, shape in enumerate(shapes):
                                     shape.rect.topleft = positions[i]
                         else:
-                            index = positions.index(dragging_shape.rect.topleft)
-                            dragging_shape.rect.topleft = positions[index]
-
+                            print("Invalid position! Try again.")
                         dragging_shape = None
 
                 elif event.type == pygame.MOUSEMOTION and dragging_shape:
@@ -507,8 +537,6 @@ class Adventure:
             for shape in shapes:
                 shape.draw(screen)
 
-            pygame.display.flip()
-
             if grid.score >= required_score:
                 print(f"Level {level_number} completed!")
                 self.unlock_next_level(level_number)
@@ -518,10 +546,18 @@ class Adventure:
                 print("No moves left! Restarting level...")
                 grid.reset()
 
+            pygame.display.flip()
+
     def unlock_next_level(self, level_number):
         next_level = level_number + 1
         if next_level <= len(self.levels):
             self.levels[next_level - 1]["unlocked"] = True
+
+    def draw_timer(self, screen):
+        if self.timer_running:
+            remaining_time = int(60 - (time.time() - self.start_time))
+            timer_text = font_medium.render(f"Time: {remaining_time}", True, WHITE)
+            screen.blit(timer_text, timer_text.get_rect(center=(SCREEN_WIDTH - 100, 20)))
 
 
 SHAPES = [
@@ -531,17 +567,17 @@ SHAPES = [
     [[1, 1, 0], [0, 1, 1]],  # Z-образная
     [[0, 1, 1], [1, 1, 0]],  # Обратная Z-образная
     [[1, 1, 1], [0, 1, 0]],  # T-образная
-    [[0, 1, 0], [1, 1, 1]], # T-образная
+    [[0, 1, 0], [1, 1, 1]],  # T-образная
     [[1], [1, 1], [1]],  # T-образная
-    [[0, 1], [1, 1], [0, 1]], # T-образная
-    [[1, 1, 1], [1, 1, 1], [1, 1, 1]], # Квадрат 3*3
-    [[1, 1, 1], [1, 1, 1]], # Прямоугольник горизонтальный
-    [[1, 1], [1, 1], [1, 1]], # Прямоугольник вертикальный
-    [[1]], # Везучий квадрат
-    [[1], [1, 1, 1]], # Крюк1
-    [[0, 0, 1], [1, 1, 1]], # Крюк2
-    [[1, 1, 1], [1]], # Крюк3
-    [[1, 1, 1], [0, 0, 1]], # Крюк4
+    [[0, 1], [1, 1], [0, 1]],  # T-образная
+    [[1, 1, 1], [1, 1, 1], [1, 1, 1]],  # Квадрат 3*3
+    [[1, 1, 1], [1, 1, 1]],  # Прямоугольник горизонтальный
+    [[1, 1], [1, 1], [1, 1]],  # Прямоугольник вертикальный
+    [[1]],  # Везучий квадрат
+    [[1], [1, 1, 1]],  # Крюк1
+    [[0, 0, 1], [1, 1, 1]],  # Крюк2
+    [[1, 1, 1], [1]],  # Крюк3
+    [[1, 1, 1], [0, 0, 1]],  # Крюк4
 ]
 
 
