@@ -4,10 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="61dfeb61-f9e4-492d-a9b1-439a4cd69255" name="Changes" comment="5.2 Sound fix. Hello menu.">
-      <change afterPath="$PROJECT_DIR$/data/icon.jpg" afterDir="false" />
+    <list default="true" id="61dfeb61-f9e4-492d-a9b1-439a4cd69255" name="Changes" comment="5.3 Graphics update">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/Save.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/data/Save.sqlite" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/Save.sqlite" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/clock_icon.png" beforeDir="false" afterPath="$PROJECT_DIR$/data/clock_icon.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/infinity_icon.png" beforeDir="false" afterPath="$PROJECT_DIR$/data/infinity_icon.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/settings_icon.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -30,8 +32,12 @@
         <option name="title" value="All" />
       </GitPushTagMode>
     </option>
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-    <option name="UPDATE_TYPE" value="REBASE" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -193,7 +199,15 @@
       <option name="project" value="LOCAL" />
       <updated>1737569549168</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="5.3 Graphics update">
+      <option name="closed" value="true" />
+      <created>1737661141655</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1737661141655</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -216,6 +230,7 @@
     <MESSAGE value="5 Settings (start), &#10;(small updates)" />
     <MESSAGE value="5.1 small updates" />
     <MESSAGE value="5.2 Sound fix. Hello menu." />
-    <option name="LAST_COMMIT_MESSAGE" value="5.2 Sound fix. Hello menu." />
+    <MESSAGE value="5.3 Graphics update" />
+    <option name="LAST_COMMIT_MESSAGE" value="5.3 Graphics update" />
   </component>
 </project>

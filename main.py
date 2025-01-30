@@ -32,6 +32,7 @@ LIGHT_BLUE = (173, 216, 230)
 GRAY = (200, 200, 200)
 DARK_GRAY = (80, 80, 70)
 PURPLE = (95, 70, 120)
+YELLOW = (255, 255, 0)
 
 font_large = pygame.font.Font(None, 100)
 font_medium = pygame.font.Font(None, 50)
@@ -102,6 +103,7 @@ initialize_database()
 class Button:
     def __init__(self, text, x, y, width, height, color, hover_color, animation_speed=1, icon=None):
         self.text = text
+        self.icon = icon
         self.rect = pygame.Rect(x, y, width, height)
         self.base_rect = self.rect.copy()
         self.color = color
@@ -144,18 +146,24 @@ cursor_image = pygame.transform.scale(cursor_image, (32, 32))
 clock_icon = pygame.image.load("data/clock_icon.png")
 clock_icon = pygame.transform.scale(clock_icon, (40, 40))
 infinity_icon = pygame.image.load("data/infinity_icon.png")
-infinity_icon = pygame.transform.scale(infinity_icon, (40, 40))
-settings_icon = pygame.image.load("data/settings_icon.png")
-settings_icon = pygame.transform.scale(settings_icon, (40, 40))
+infinity_icon = pygame.transform.scale(infinity_icon, (75, 60))
+settings_icon = pygame.image.load("data/settings-icon.png")
+settings_icon = pygame.transform.scale(settings_icon, (50, 50))
 crown_image = pygame.image.load("data/crown.png")
 crown_image = pygame.transform.scale(crown_image, (40, 40))
+rules_icon = pygame.image.load("data/rules_icon.png")
+rules_icon = pygame.transform.scale(rules_icon, (50, 50))
+donate_icon = pygame.image.load("data/donate_icon.png")
+donate_icon = pygame.transform.scale(donate_icon, (70, 70))
 
 buttons = [
-    Button("Adventure", SCREEN_WIDTH // 2 - 150, 200, 300, 70, ORANGE, (255, 200, 100), icon=clock_icon),
-    Button("Classic", SCREEN_WIDTH // 2 - 150, 300, 300, 70, GREEN, (100, 255, 200), icon=infinity_icon),
-    Button("Settings", SCREEN_WIDTH // 2 - 150, 400, 300, 70, BLUE, (100, 150, 255), icon=settings_icon),
+    Button("Adventure", SCREEN_WIDTH // 2 - 150, 200, 300, 70, ORANGE, (255, 200, 100), icon=clock_icon, animation_speed=0.5),
+    Button("Classic", SCREEN_WIDTH // 2 - 150, 300, 300, 70, GREEN, (100, 255, 200), icon=infinity_icon, animation_speed=0.5),
+    Button("Settings", SCREEN_WIDTH // 2 - 150, 500, 300, 70, BLUE, (100, 150, 255), icon=settings_icon, animation_speed=0.5),
+    Button("", SCREEN_WIDTH // 2 - 150, 400, 125, 70, PURPLE, (150, 100, 200), icon=rules_icon, animation_speed=0.5),
+    Button("", SCREEN_WIDTH // 2 + 25, 400, 125, 70, PURPLE, (150, 100, 200), icon=donate_icon, animation_speed=0.5)
 ]
-back_to_menu_button = Button("Back", SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100))
+back_to_menu_button = Button("Back", SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100), animation_speed=0.5)
 
 
 class Snowflake:
@@ -233,6 +241,24 @@ class BackgroundCube:
 background_cubes = [BackgroundCube() for _ in range(75)]
 
 
+class ExplosionParticle:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.size = random.randint(3, 6)
+        self.life = 60
+        self.speed = [random.uniform(-2, 2), random.uniform(-5, -1)]
+        self.color = random.choice([ORANGE, RED, YELLOW])
+
+    def update(self):
+        self.x += self.speed[0]
+        self.y += self.speed[1]
+        self.life -= 5
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
+
+
 class Grid:
     def __init__(self, obstacles=None, mode="classic"):
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
@@ -242,6 +268,7 @@ class Grid:
                 self.grid[y][x] = 1
         self.load_from_database()
         self.score, self.high_score = self.load_scores()
+        self.explosion_particles = []
 
     def draw(self):
         for row in range(GRID_SIZE):
@@ -284,6 +311,7 @@ class Grid:
 
         for r in full_rows:
             for c in range(GRID_SIZE):
+                self._add_particles(100 + c * CELL_SIZE, 100 + r * CELL_SIZE)
                 self.grid[r][c] = 0
             self.score += 10 * GRID_SIZE
             if sound_on:
@@ -291,12 +319,32 @@ class Grid:
 
         for c in full_cols:
             for r in range(GRID_SIZE):
+                self._add_particles(100 + c * CELL_SIZE, 100 + r * CELL_SIZE)
                 self.grid[r][c] = 0
             self.score += 10 * GRID_SIZE
             if sound_on:
                 pygame.mixer.Sound("data/line_clear.mp3").play()
 
+        for particle in self.explosion_particles[:]:
+            particle.update()
+            if particle.life <= 0:
+                self.explosion_particles.remove(particle)
+
         self.update_scores()
+
+    def _add_particles(self, x, y):
+        for _ in range(15):
+            self.explosion_particles.append(ExplosionParticle(x + CELL_SIZE // 2, y + CELL_SIZE // 2))
+
+    def draw_effects(self, screen):
+        for particle in self.explosion_particles:
+            particle.draw(screen)
+
+    def update_effects(self):
+        for particle in self.explosion_particles[:]:
+            particle.update()
+            if particle.life <= 0:
+                self.explosion_particles.remove(particle)
 
     def save_to_database(self):
         table_name = f"{self.mode}_grid"
@@ -544,7 +592,8 @@ class Adventure:
 
             if not grid.has_moves(shapes):
                 print("No moves left! Restarting level...")
-                grid.reset()
+                pygame.mixer.Sound("data/game_over.mp3").play()
+                show_no_moves_window(grid)
 
             pygame.display.flip()
 
@@ -675,9 +724,10 @@ def play_classic():
     while running:
         clock.tick(FPS)
         if dark_theme:
-            screen.fill(DARK_BLUE if dark_theme else LIGHT_BLUE)
+            draw_gradient_background(screen, DARK_BLUE, BLUE)
         else:
-            draw_gradient_background(screen, DARK_BLUE, LIGHT_BLUE)
+            draw_gradient_background(screen, BLUE, LIGHT_BLUE)
+
         back_to_menu_button.draw(screen, pygame.mouse.get_pos())
 
         for cube in background_cubes:
@@ -739,7 +789,9 @@ def play_classic():
                     dragging_shape.rect.x = event.pos[0] + offset_x
                     dragging_shape.rect.y = event.pos[1] + offset_y
 
+        grid.update_effects()
         grid.draw()
+        grid.draw_effects(screen)
 
         for shape in shapes:
             shape.draw(screen)
@@ -767,7 +819,13 @@ def open_settings_menu():
     theme_toggle_button = Button("Change Theme", SCREEN_WIDTH // 2 - 150, 400, 300, 70, GREEN, (100, 255, 200))
 
     while running:
-        screen.fill(DARK_BLUE if dark_theme else LIGHT_BLUE)
+        if dark_theme:
+            draw_gradient_background(screen, DARK_BLUE, BLUE)
+        else:
+            draw_gradient_background(screen, BLUE, LIGHT_BLUE)
+        for cube in background_cubes:
+            cube.move()
+            cube.draw(screen)
 
         settings_text = font_large.render("Settings", True, DARK_GRAY)
         screen.blit(settings_text, settings_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
@@ -808,10 +866,57 @@ def is_first_run():
     return False
 
 
+def show_rules_window():
+    running = True
+    rules_text = [
+        "Rules:",
+        "1. Drag shapes onto the grid",
+        "2. Fill in rows or columns",
+        "3. Destroy blocks to get points",
+        "4. Avoid filling the entire grid",
+        "5. In Classic mode, get as many points as possible",
+        "6. In Adventure fashion, collect the required number",
+        "    of points to move to the next level"
+    ]
+
+    while running:
+        if dark_theme:
+            draw_gradient_background(screen, DARK_BLUE, BLUE)
+        else:
+            draw_gradient_background(screen, BLUE, LIGHT_BLUE)
+        for cube in background_cubes:
+            cube.move()
+            cube.draw(screen)
+        back_to_menu_button.draw(screen, pygame.mouse.get_pos())
+        y_offset = 100
+        for line in rules_text:
+            text_surface = font_small.render(line, True, WHITE)
+            screen.blit(text_surface, (100, y_offset))
+            y_offset += 40
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if back_to_menu_button.is_clicked(pygame.mouse.get_pos(), pygame.mouse.get_pressed()[0]):
+                running = False
+        mouse_pos = pygame.mouse.get_pos()
+        screen.blit(cursor_image, mouse_pos)
+        pygame.display.flip()
+
+
+def open_donate_link():
+    import webbrowser
+    webbrowser.open("https://www.donationalerts.com/r/gobziii_yt")
+
+
 def show_tutorial():
     running = True
     while running:
-        screen.fill((30, 30, 30))
+        if dark_theme:
+            draw_gradient_background(screen, DARK_BLUE, BLUE)
+        else:
+            draw_gradient_background(screen, BLUE, LIGHT_BLUE)
         tutorial_text = font_medium.render("Welcome to Block Blast!", True, WHITE)
         instruction_text = font_small.render("Drag and drop blocks to the grid to score points.", True, WHITE)
         continue_text = font_small.render("Press any key to continue...", True, WHITE)
@@ -844,9 +949,9 @@ def main():
     while True:
         clock.tick(FPS)
         if dark_theme:
-            screen.fill(DARK_BLUE if dark_theme else LIGHT_BLUE)
+            draw_gradient_background(screen, DARK_BLUE, BLUE)
         else:
-            draw_gradient_background(screen, DARK_BLUE, LIGHT_BLUE)
+            draw_gradient_background(screen, BLUE, LIGHT_BLUE)
 
         for snowflake in snowflakes:
             snowflake.fall()
@@ -876,6 +981,10 @@ def main():
                     play_classic()
                 elif button.text == "Settings":
                     open_settings_menu()
+                elif button.icon == rules_icon:
+                    show_rules_window()
+                elif button.icon == donate_icon:
+                    open_donate_link()
 
         screen.blit(cursor_image, mouse_pos)
         pygame.display.flip()
