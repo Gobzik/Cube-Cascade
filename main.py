@@ -12,8 +12,8 @@ SCREEN_HEIGHT = 600
 FPS = 60
 GRID_SIZE = 8
 CELL_SIZE = 50
-icon_image = pygame.image.load("data/icon.jpg")
-pygame.display.set_icon(icon_image)
+#icon_image = pygame.image.load("data/icon.jpg")
+#pygame.display.set_icon(icon_image)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Cube Cascade")
 sound_on = True
