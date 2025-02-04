@@ -12,14 +12,15 @@ SCREEN_HEIGHT = 600
 FPS = 60
 GRID_SIZE = 8
 CELL_SIZE = 50
-#icon_image = pygame.image.load("data/icon.jpg")
-#pygame.display.set_icon(icon_image)
+icon_image = pygame.image.load("data/icon.jpg")
+pygame.display.set_icon(icon_image)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Cube Cascade")
 sound_on = True
 dark_theme = False
 pygame.mouse.set_visible(False)
 DB_NAME = 'data/Save.sqlite'
+current_language = "English"
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -156,14 +157,78 @@ rules_icon = pygame.transform.scale(rules_icon, (50, 50))
 donate_icon = pygame.image.load("data/donate_icon.png")
 donate_icon = pygame.transform.scale(donate_icon, (70, 70))
 
+
+def get_text(text):
+    if current_language == "Russian":
+        translations = {
+            "Level": "Уровень",
+            "Cube Cascade": "  Куб Каскад",
+            "Back": "Назад",
+            "Retry": "Повторить",
+            "Menu": "Меню",
+            "Settings": "Настройки",
+            "Sound: ON": "Звук: ВКЛ",
+            "Sound: OFF": "Звук: ВЫКЛ",
+            "Change Theme": "Сменить тему",
+            "Language: English": "Язык: Русский",
+            "Rules": "Правила",
+            "Donate": "Поддержать",
+            "Adventure": "Приключение",
+            "Classic": "Классика",
+            "No Moves Left!": "Нет ходов!",
+            "Welcome to Block Blast!": "Добро пожаловать в Block Blast!",
+            "Drag and drop blocks to the grid to score points.":
+                "Перетаскивайте блоки на сетку, чтобы набирать очки.",
+            "Press any key to continue...": "Нажмите любую клавишу, чтобы продолжить...",
+            "Theme Dark": "Тема Тёмная",
+            "Theme Light": "Тема Светлая",
+            "Language changed to English": "Язык изменён на Английский",
+            "Language changed to Russian": "Язык изменён на Русский"
+        }
+        return translations.get(text, text)
+    elif current_language == "English":
+        translations = {
+            "Уровень": "Level",
+            "Куб Каскад": "Cube Cascade",
+            "Назад": "Back",
+            "Повторить": "Retry",
+            "Меню": "Menu",
+            "Настройки": "Settings",
+            "Звук: ВКЛ": "Sound: ON",
+            "Звук: ВЫКЛ": "Sound: OFF",
+            "Сменить тему": "Change Theme",
+            "Язык: Русский": "Language: English",
+            "Правила": "Rules",
+            "Поддержать": "Donate",
+            "Приключение": "Adventure",
+            "Классика": "Classic",
+            "Нет ходов!": "No Moves Left!",
+            "Добро пожаловать в Block Blast!": "Welcome to Block Blast!",
+            "Перетаскивайте блоки на сетку, чтобы набирать очки.":
+                "Drag and drop blocks to the grid to score points.",
+            "Нажмите любую клавишу, чтобы продолжить...": "Press any key to continue...",
+            "Тема Тёмная": "Theme Dark",
+            "Тема Светлая": "Theme Light",
+            "Язык изменён на Английский": "Language changed to English",
+            "Язык изменён на Русский": "Language changed to Russian"
+        }
+        return translations.get(text, text)
+    return text
+
+
 buttons = [
-    Button("Adventure", SCREEN_WIDTH // 2 - 150, 200, 300, 70, ORANGE, (255, 200, 100), icon=clock_icon, animation_speed=0.5),
-    Button("Classic", SCREEN_WIDTH // 2 - 150, 300, 300, 70, GREEN, (100, 255, 200), icon=infinity_icon, animation_speed=0.5),
-    Button("Settings", SCREEN_WIDTH // 2 - 150, 500, 300, 70, BLUE, (100, 150, 255), icon=settings_icon, animation_speed=0.5),
+    Button("Adventure", SCREEN_WIDTH // 2 - 150, 200, 300, 70, ORANGE, (255, 200, 100), icon=clock_icon,
+           animation_speed=0.5),
+    Button("Classic", SCREEN_WIDTH // 2 - 150, 300, 300, 70, GREEN, (100, 255, 200), icon=infinity_icon,
+           animation_speed=0.5),
+    Button("Settings", SCREEN_WIDTH // 2 - 150, 500, 300, 70, BLUE, (100, 150, 255), icon=settings_icon,
+           animation_speed=0.5),
     Button("", SCREEN_WIDTH // 2 - 150, 400, 125, 70, PURPLE, (150, 100, 200), icon=rules_icon, animation_speed=0.5),
     Button("", SCREEN_WIDTH // 2 + 25, 400, 125, 70, PURPLE, (150, 100, 200), icon=donate_icon, animation_speed=0.5)
 ]
-back_to_menu_button = Button("Back", SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100), animation_speed=0.5)
+
+back_to_menu_button = Button(get_text("Back"), SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100),
+                             animation_speed=0.5)
 
 
 class Snowflake:
@@ -808,15 +873,23 @@ def toggle_music():
         pygame.mixer.music.unpause()
 
 
+def change_language(language):
+    global current_language
+    current_language = language
+
+
 def open_settings_menu():
-    global dark_theme, sound_on
+    global dark_theme, sound_on, current_language
     running = True
-    back_button = Button("Back", SCREEN_WIDTH - 250, SCREEN_HEIGHT - 100, 200, 50, ORANGE, (255, 200, 100))
-    sound_button = Button(
-        "Sound: ON",
+    back_button = Button(get_text("Back"), SCREEN_WIDTH - 250, SCREEN_HEIGHT - 100, 200, 50, ORANGE, (255, 200, 100))
+    sound_button = Button(get_text(
+        "Sound: ON"),
         SCREEN_WIDTH // 2 - 150, 300, 300, 70, BLUE, (100, 150, 255)
     )
-    theme_toggle_button = Button("Change Theme", SCREEN_WIDTH // 2 - 150, 400, 300, 70, GREEN, (100, 255, 200))
+    theme_toggle_button = Button(get_text("Change Theme"), SCREEN_WIDTH // 2 - 150, 400, 300, 70, GREEN,
+                                 (100, 255, 200))
+    language_button = Button(get_text("Language: English"), SCREEN_WIDTH // 2 - 150, 200, 300, 70, BLUE,
+                             (100, 150, 255))
 
     while running:
         if dark_theme:
@@ -827,17 +900,18 @@ def open_settings_menu():
             cube.move()
             cube.draw(screen)
 
-        settings_text = font_large.render("Settings", True, DARK_GRAY)
+        settings_text = font_large.render(get_text("Settings"), True, DARK_GRAY)
         screen.blit(settings_text, settings_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
 
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
 
-        sound_button.text = f"Sound ef: {'ON' if sound_on else 'OFF'}"
+        sound_button.text = get_text(f"Sound: {'ON' if sound_on else 'OFF'}")
 
         back_button.draw(screen, mouse_pos)
         sound_button.draw(screen, mouse_pos)
         theme_toggle_button.draw(screen, mouse_pos)
+        language_button.draw(screen, mouse_pos)
 
         screen.blit(cursor_image, mouse_pos)
         pygame.display.flip()
@@ -852,10 +926,46 @@ def open_settings_menu():
                 elif sound_button.is_clicked(mouse_pos, mouse_pressed):
                     sound_on = not sound_on
                     toggle_music()
-                    print(f"Sound {'On' if sound_on else 'Off'}")
+                    print(get_text(f"Sound: {'ON' if sound_on else 'OFF'}"))
                 elif theme_toggle_button.is_clicked(mouse_pos, mouse_pressed):
                     dark_theme = not dark_theme
-                    print(f"Theme {'Dark' if dark_theme else 'Light'}")
+                    print(get_text(f"Theme {'Dark' if dark_theme else 'Light'}"))
+                elif language_button.is_clicked(mouse_pos, mouse_pressed):
+                    print(get_text(f"Language changed to {current_language}"))
+                    if current_language == "English":
+                        change_language("Russian")
+                        language_button.text = get_text("Language: English")
+                        back_button.text = get_text("Back")
+                        sound_button.text = get_text("Sound: ON")
+                        theme_toggle_button.text = get_text("Change Theme")
+                        for button in buttons:
+                            if button.text == "Adventure":
+                                button.text = get_text("Adventure")
+                            elif button.text == "Classic":
+                                button.text = get_text("Classic")
+                            elif button.text == "Settings":
+                                button.text = get_text("Settings")
+                            elif button.text == "Rules":
+                                button.text = get_text("Rules")
+                            elif button.text == "Donate":
+                                button.text = get_text("Donate")
+                else:
+                    change_language("English")
+                    language_button.text = get_text("Language: English")
+                    back_button.text = get_text("Back")
+                    sound_button.text = get_text("Sound: ON")
+                    theme_toggle_button.text = get_text("Change Theme")
+                    for button in buttons:
+                        if button.text == "Приключение":
+                            button.text = get_text("Adventure")
+                        elif button.text == "Классика":
+                            button.text = get_text("Classic")
+                        elif button.text == "Настройки":
+                            button.text = get_text("Settings")
+                        elif button.text == "Правила":
+                            button.text = get_text("Rules")
+                        elif button.text == "Поддержать":
+                            button.text = get_text("Donate")
 
 
 def is_first_run():
@@ -879,6 +989,17 @@ def show_rules_window():
         "    of points to move to the next level"
     ]
 
+    rules_text_ru = [
+        "Правила:",
+        "1. Перетащите фигуры на сетку",
+        "2. Заполните строки или столбцы",
+        "3. Уничтожьте блоки, чтобы получить очки",
+        "4. Избегайте заполнения всей сетки",
+        "5. В режиме Классика наберите как можно больше очков",
+        "6. В режиме Приключения соберите необходимое количество",
+        "     очков, чтобы перейти на следующий уровень"
+    ]
+
     while running:
         if dark_theme:
             draw_gradient_background(screen, DARK_BLUE, BLUE)
@@ -889,10 +1010,16 @@ def show_rules_window():
             cube.draw(screen)
         back_to_menu_button.draw(screen, pygame.mouse.get_pos())
         y_offset = 100
-        for line in rules_text:
-            text_surface = font_small.render(line, True, WHITE)
-            screen.blit(text_surface, (100, y_offset))
-            y_offset += 40
+        if current_language == 'English':
+            for line in rules_text:
+                text_surface = font_small.render(line, True, WHITE)
+                screen.blit(text_surface, (100, y_offset))
+                y_offset += 40
+        else:
+            for line in rules_text_ru:
+                text_surface = font_small.render(line, True, WHITE)
+                screen.blit(text_surface, (100, y_offset))
+                y_offset += 40
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -960,7 +1087,7 @@ def main():
             cube.move()
             cube.draw(screen)
 
-        draw_rainbow_text("Cube Cascade", font_large, SCREEN_WIDTH // 2 - 243, 100, WHITE, screen)
+        draw_rainbow_text(get_text("Cube Cascade"), font_large, SCREEN_WIDTH // 2 - 243, 100, WHITE, screen)
 
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
@@ -973,13 +1100,13 @@ def main():
         for button in buttons:
             button.draw(screen, mouse_pos)
             if button.is_clicked(mouse_pos, mouse_pressed):
-                if button.text == "Adventure":
+                if button.text == "Adventure" or button.text == "Приключение":
                     level_number = 1
                     while adventure.start_level(level_number):
                         level_number += 1
-                elif button.text == "Classic":
+                elif button.text == "Classic" or button.text == "Классика":
                     play_classic()
-                elif button.text == "Settings":
+                elif button.text == "Settings" or button.text == "Настройки":
                     open_settings_menu()
                 elif button.icon == rules_icon:
                     show_rules_window()
@@ -992,3 +1119,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
