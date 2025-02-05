@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="61dfeb61-f9e4-492d-a9b1-439a4cd69255" name="Changes" comment="6.0 Rules/Donate/Graphic">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/Save.sqlite" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/settings_icon.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/other/Cube cascade.pptx" beforeDir="false" afterPath="$PROJECT_DIR$/other/Cube cascade.pptx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
