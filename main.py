@@ -4,67 +4,52 @@ import sys
 import random
 import time
 import os
+import ast
+from settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, GRID_SIZE, CELL_SIZE, icon_image, screen, sound_on, dark_theme, \
+    DB_NAME, WHITE, BLACK, BLUE, RED, ORANGE, GREEN, DARK_BLUE, LIGHT_BLUE, GRAY, DARK_GRAY, PURPLE, YELLOW, \
+    font_large, font_medium, font_small, clock_icon, infinity_icon, settings_icon, rules_icon, donate_icon, crown_image, \
+    cursor_image, BLOCK_SPRITES
+from classes import Button, Snowflake, BackgroundCube, ExplosionParticle
 
 pygame.init()
-
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-FPS = 60
-GRID_SIZE = 8
-CELL_SIZE = 50
-icon_image = pygame.image.load("data/icon.jpg")
 pygame.display.set_icon(icon_image)
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Cube Cascade")
-sound_on = True
-dark_theme = False
 pygame.mouse.set_visible(False)
-DB_NAME = 'data/Save.sqlite'
-current_language = "English"
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-BLUE = (0, 123, 255)
-RED = (255, 0, 0)
-ORANGE = (255, 165, 0)
-GREEN = (0, 200, 150)
-DARK_BLUE = (10, 10, 80)
-LIGHT_BLUE = (173, 216, 230)
-GRAY = (200, 200, 200)
-DARK_GRAY = (80, 80, 70)
-PURPLE = (95, 70, 120)
-YELLOW = (255, 255, 0)
-
-font_large = pygame.font.Font(None, 100)
-font_medium = pygame.font.Font(None, 50)
-font_small = pygame.font.Font(None, 30)
+for key in BLOCK_SPRITES:
+    BLOCK_SPRITES[key] = pygame.transform.scale(BLOCK_SPRITES[key], (CELL_SIZE, CELL_SIZE))
 
 
 def initialize_database():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    # Таблица для игрового поля Classic
+    # Удаляем старые таблицы, если они существуют
+    cursor.execute("DROP TABLE IF EXISTS classic_grid")
+    cursor.execute("DROP TABLE IF EXISTS adventure_grid")
+
+    # Создаем таблицы заново с новым столбцом
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS classic_grid (
         id INTEGER PRIMARY KEY,
         x INTEGER,
         y INTEGER,
-        value INTEGER
+        value INTEGER,
+        color TEXT
     )
     """)
 
-    # Таблица для игрового поля Adventure
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS adventure_grid (
         id INTEGER PRIMARY KEY,
         x INTEGER,
         y INTEGER,
-        value INTEGER
+        value INTEGER,
+        color TEXT
     )
     """)
 
-    # Таблица для текущего счета и рекорда
+    # Остальные таблицы остаются без изменений
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS scores (
         id INTEGER PRIMARY KEY,
@@ -73,7 +58,6 @@ def initialize_database():
     )
     """)
 
-    # Таблица для уровней Adventure
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS levels (
         id INTEGER PRIMARY KEY,
@@ -83,138 +67,22 @@ def initialize_database():
     )
     """)
 
-    # Таблица для сохранения фигур
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS pieces (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            shape TEXT NOT NULL,
-            x INTEGER NOT NULL,
-            y INTEGER NOT NULL,
-            mode TEXT NOT NULL,
-            placed INTEGER DEFAULT 0
-        )
-        """)
+    CREATE TABLE IF NOT EXISTS pieces (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shape TEXT NOT NULL,
+        x INTEGER NOT NULL,
+        y INTEGER NOT NULL,
+        mode TEXT NOT NULL,
+        placed INTEGER DEFAULT 0
+    )
+    """)
 
     conn.commit()
     conn.close()
 
 
 initialize_database()
-
-
-class Button:
-    def __init__(self, text, x, y, width, height, color, hover_color, animation_speed=1, icon=None):
-        self.text = text
-        self.icon = icon
-        self.rect = pygame.Rect(x, y, width, height)
-        self.base_rect = self.rect.copy()
-        self.color = color
-        self.hover_color = hover_color
-        self.icon = icon
-        self.animation_speed = animation_speed
-        self.growth = 1.1
-
-    def draw(self, screen, mouse_pos):
-        if self.rect.collidepoint(mouse_pos):
-            target_width = self.base_rect.width * self.growth
-            target_height = self.base_rect.height * self.growth
-            self.rect.width += int((target_width - self.rect.width) * self.animation_speed)
-            self.rect.height += int((target_height - self.rect.height) * self.animation_speed)
-
-            self.rect.center = self.base_rect.center
-            current_color = self.hover_color
-        else:
-            self.rect.width += int((self.base_rect.width - self.rect.width) * self.animation_speed)
-            self.rect.height += int((self.base_rect.height - self.rect.height) * self.animation_speed)
-            self.rect.center = self.base_rect.center
-            current_color = self.color
-
-        pygame.draw.rect(screen, current_color, self.rect, border_radius=15)
-
-        if self.icon:
-            icon_rect = self.icon.get_rect(midleft=(self.rect.left + 20, self.rect.centery))
-            screen.blit(self.icon, icon_rect)
-
-        text_surface = font_medium.render(self.text, True, WHITE)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
-
-    def is_clicked(self, mouse_pos, mouse_pressed):
-        return self.rect.collidepoint(mouse_pos) and mouse_pressed
-
-
-cursor_image = pygame.image.load("data/cursor.png")
-cursor_image = pygame.transform.scale(cursor_image, (32, 32))
-clock_icon = pygame.image.load("data/clock_icon.png")
-clock_icon = pygame.transform.scale(clock_icon, (40, 40))
-infinity_icon = pygame.image.load("data/infinity_icon.png")
-infinity_icon = pygame.transform.scale(infinity_icon, (75, 60))
-settings_icon = pygame.image.load("data/settings-icon.png")
-settings_icon = pygame.transform.scale(settings_icon, (50, 50))
-crown_image = pygame.image.load("data/crown.png")
-crown_image = pygame.transform.scale(crown_image, (40, 40))
-rules_icon = pygame.image.load("data/rules_icon.png")
-rules_icon = pygame.transform.scale(rules_icon, (50, 50))
-donate_icon = pygame.image.load("data/donate_icon.png")
-donate_icon = pygame.transform.scale(donate_icon, (70, 70))
-
-
-def get_text(text):
-    if current_language == "Russian":
-        translations = {
-            "Level": "Уровень",
-            "Cube Cascade": "  Куб Каскад",
-            "Back": "Назад",
-            "Retry": "Повторить",
-            "Menu": "Меню",
-            "Settings": "Настройки",
-            "Sound: ON": "Звук: ВКЛ",
-            "Sound: OFF": "Звук: ВЫКЛ",
-            "Change Theme": "Сменить тему",
-            "Language: English": "Язык: Русский",
-            "Rules": "Правила",
-            "Donate": "Поддержать",
-            "Adventure": "Приключение",
-            "Classic": "Классика",
-            "No Moves Left!": "Нет ходов!",
-            "Welcome to Block Blast!": "Добро пожаловать в Block Blast!",
-            "Drag and drop blocks to the grid to score points.":
-                "Перетаскивайте блоки на сетку, чтобы набирать очки.",
-            "Press any key to continue...": "Нажмите любую клавишу, чтобы продолжить...",
-            "Theme Dark": "Тема Тёмная",
-            "Theme Light": "Тема Светлая",
-            "Language changed to English": "Язык изменён на Английский",
-            "Language changed to Russian": "Язык изменён на Русский"
-        }
-        return translations.get(text, text)
-    elif current_language == "English":
-        translations = {
-            "Уровень": "Level",
-            "Куб Каскад": "Cube Cascade",
-            "Назад": "Back",
-            "Повторить": "Retry",
-            "Меню": "Menu",
-            "Настройки": "Settings",
-            "Звук: ВКЛ": "Sound: ON",
-            "Звук: ВЫКЛ": "Sound: OFF",
-            "Сменить тему": "Change Theme",
-            "Язык: Русский": "Language: English",
-            "Правила": "Rules",
-            "Поддержать": "Donate",
-            "Приключение": "Adventure",
-            "Классика": "Classic",
-            "Нет ходов!": "No Moves Left!",
-            "Добро пожаловать в Block Blast!": "Welcome to Block Blast!",
-            "Перетаскивайте блоки на сетку, чтобы набирать очки.":
-                "Drag and drop blocks to the grid to score points.",
-            "Нажмите любую клавишу, чтобы продолжить...": "Press any key to continue...",
-            "Тема Тёмная": "Theme Dark",
-            "Тема Светлая": "Theme Light",
-            "Язык изменён на Английский": "Language changed to English",
-            "Язык изменён на Русский": "Language changed to Russian"
-        }
-        return translations.get(text, text)
-    return text
 
 
 buttons = [
@@ -228,25 +96,8 @@ buttons = [
     Button("", SCREEN_WIDTH // 2 + 25, 400, 125, 70, PURPLE, (150, 100, 200), icon=donate_icon, animation_speed=0.5)
 ]
 
-back_to_menu_button = Button(get_text("Back"), SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100),
+back_to_menu_button = Button("Back", SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100),
                              animation_speed=0.5)
-
-
-class Snowflake:
-    def __init__(self):
-        self.x = random.randint(0, SCREEN_WIDTH)
-        self.y = random.randint(-SCREEN_HEIGHT, 0)
-        self.size = random.randint(2, 5)
-        self.speed = random.randint(10, 30) / FPS
-
-    def fall(self):
-        self.y += self.speed
-        if self.y > SCREEN_HEIGHT:
-            self.y = random.randint(-50, -10)
-            self.x = random.randint(0, SCREEN_WIDTH)
-
-    def draw(self, screen):
-        pygame.draw.circle(screen, WHITE, (self.x, self.y), self.size)
 
 
 snowflakes = [Snowflake() for _ in range(150)]
@@ -284,45 +135,7 @@ def draw_gradient_background(screen, top_color, bottom_color):
         pygame.draw.line(screen, color, (0, y), (SCREEN_WIDTH, y))
 
 
-class BackgroundCube:
-    def __init__(self):
-        self.x = random.randint(0, SCREEN_WIDTH)
-        self.y = random.randint(0, SCREEN_HEIGHT)
-        self.size = random.randint(5, 15)
-        self.speed = random.uniform(0.2, 0.7)
-        self.color = random.choice([(255, 255, 255), (200, 200, 200), (150, 150, 150)])
-
-    def move(self):
-        self.y += self.speed
-        if self.y > SCREEN_HEIGHT:
-            self.y = -self.size
-            self.x = random.randint(0, SCREEN_WIDTH)
-
-    def draw(self, screen):
-        surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
-        surface.fill((*self.color, 50))
-        screen.blit(surface, (self.x, self.y))
-
-
 background_cubes = [BackgroundCube() for _ in range(75)]
-
-
-class ExplosionParticle:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.size = random.randint(3, 6)
-        self.life = 60
-        self.speed = [random.uniform(-2, 2), random.uniform(-5, -1)]
-        self.color = random.choice([ORANGE, RED, YELLOW])
-
-    def update(self):
-        self.x += self.speed[0]
-        self.y += self.speed[1]
-        self.life -= 5
-
-    def draw(self, screen):
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
 
 
 class Grid:
@@ -340,18 +153,24 @@ class Grid:
     def draw(self):
         for row in range(GRID_SIZE):
             for col in range(GRID_SIZE):
-                color = GRAY if self.grid[row][col] == 0 else BLUE
-                rect = pygame.Rect(100 + col * CELL_SIZE, 100 + row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-                pygame.draw.rect(screen, color, rect)
-                pygame.draw.rect(screen, WHITE, rect, 1)
+                cell_data = self.grid[row][col]
+                x = 100 + col * CELL_SIZE
+                y = 100 + row * CELL_SIZE
 
-        high_score_text = font_medium.render(f"{self.high_score}", True, RED)
-        screen.blit(crown_image, (10, 5))
-        screen.blit(high_score_text, (50, 10))
+                if cell_data != 0:
+                    # Если клетка занята, рисуем спрайт
+                    if isinstance(cell_data, dict):
+                        color = cell_data['color']  # Получаем цвет из данных клетки
+                    else:
+                        color = "blue"  # Запасной цвет
 
-        current_score_text = font_medium.render(f"{self.score}", True, ORANGE)
-        text_rect = current_score_text.get_rect(center=(SCREEN_WIDTH // 2 - 100, 85))
-        screen.blit(current_score_text, text_rect)
+                    # Рисуем спрайт
+                    sprite = BLOCK_SPRITES[color]
+                    screen.blit(sprite, (x, y))
+                else:
+                    # Если клетка пустая, рисуем фон
+                    pygame.draw.rect(screen, GRAY, (x, y, CELL_SIZE, CELL_SIZE))
+                    pygame.draw.rect(screen, WHITE, (x, y, CELL_SIZE, CELL_SIZE), 1)
 
     def can_place(self, shape, x, y):
         for r, row in enumerate(shape):
@@ -364,11 +183,16 @@ class Grid:
                         return False
         return True
 
-    def place(self, shape, x, y):
+    def place(self, shape, x, y, color):
+        """Размещает фигуру на поле с сохранением её цвета"""
         for r, row in enumerate(shape):
             for c, cell in enumerate(row):
                 if cell:
-                    self.grid[y + r][x + c] = 1
+                    # Сохраняем цвет фигуры в сетке
+                    self.grid[y + r][x + c] = {
+                        'value': 1,
+                        'color': color  # Используем переданный цвет
+                    }
         self.check_lines()
         self.save_to_database()
 
@@ -419,8 +243,17 @@ class Grid:
         cursor = conn.cursor()
         cursor.execute(f"DELETE FROM {table_name}")
         for y, row in enumerate(self.grid):
-            for x, value in enumerate(row):
-                cursor.execute(f"INSERT INTO {table_name} (x, y, value) VALUES (?, ?, ?)", (x, y, value))
+            for x, cell_data in enumerate(row):
+                if isinstance(cell_data, dict):
+                    cursor.execute(
+                        f"INSERT INTO {table_name} (x, y, value, color) VALUES (?, ?, ?, ?)",
+                        (x, y, cell_data['value'], cell_data['color'])
+                    )
+                else:
+                    cursor.execute(
+                        f"INSERT INTO {table_name} (x, y, value) VALUES (?, ?, ?)",
+                        (x, y, cell_data)
+                    )
         conn.commit()
         conn.close()
 
@@ -428,10 +261,24 @@ class Grid:
         table_name = f"{self.mode}_grid"
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT x, y, value FROM {table_name}")
+
+        try:
+            # Пытаемся получить данные с цветом
+            cursor.execute(f"SELECT x, y, value, color FROM {table_name}")
+        except sqlite3.OperationalError:
+            # Если столбца color нет, загружаем без него
+            cursor.execute(f"SELECT x, y, value FROM {table_name}")
+            data = cursor.fetchall()
+            for x, y, value in data:
+                self.grid[y][x] = value
+            return
+
         data = cursor.fetchall()
-        for x, y, value in data:
-            self.grid[y][x] = value
+        for x, y, value, color in data:
+            if color is not None:
+                self.grid[y][x] = {'value': value, 'color': color}
+            else:
+                self.grid[y][x] = value
         conn.close()
 
     def has_moves(self, shapes):
@@ -608,7 +455,7 @@ class AdventureMode:
                 if pos not in obstacles:
                     obstacles.append(pos)
 
-            time_limit = 60 + (i * 5) if i >= 5 else None
+            time_limit = 90 + (i * 5) if i >= 5 else None
             level = AdventureLevel(
                 number=i,
                 required_score=i * 250,
@@ -689,10 +536,18 @@ class AdventureMode:
                 elapsed = time.time() - self.start_time
                 time_remaining = max(0, level.time_limit - int(elapsed))
                 if time_remaining <= 0:
-                    self.handle_timeout(grid)
+                    self.show_level_failed(grid)
                     return False
 
-            screen.fill(DARK_BLUE if dark_theme else LIGHT_BLUE)
+            if dark_theme:
+                draw_gradient_background(screen, DARK_BLUE, BLUE)
+            else:
+                draw_gradient_background(screen, BLUE, LIGHT_BLUE)
+
+            for cube in background_cubes:
+                cube.move()
+                cube.draw(screen)
+
             grid.draw()
             self.draw_ui(level, time_remaining, grid)
 
@@ -718,7 +573,7 @@ class AdventureMode:
                         grid_y = (dragging_shape.rect.y - 100 + CELL_SIZE // 2) // CELL_SIZE
 
                         if grid.can_place(dragging_shape.shape, grid_x, grid_y):
-                            grid.place(dragging_shape.shape, grid_x, grid_y)
+                            grid.place(dragging_shape.shape, grid_x, grid_y, dragging_shape.time_color)
 
                             shapes.remove(dragging_shape)
 
@@ -785,7 +640,7 @@ class AdventureMode:
     def draw_ui(self, level, time_remaining, grid):
         back_to_menu_button.draw(screen, pygame.mouse.get_pos())
         level_text = font_medium.render(f"Level {level.number}", True, ORANGE)
-        screen.blit(level_text, (130, 10))
+        screen.blit(level_text, (150, 10))
 
         score_text = font_medium.render(
             f"{grid.score}/{level.required_score}",
@@ -795,7 +650,7 @@ class AdventureMode:
 
         if time_remaining is not None:
             timer_text = font_medium.render(f"Time: {time_remaining}", True, WHITE)
-            screen.blit(timer_text, (SCREEN_WIDTH - 200, 20))
+            screen.blit(timer_text, (SCREEN_WIDTH - 550, 525))
 
     def show_level_complete(self, level):
         particles = []
@@ -1008,6 +863,10 @@ def level_selection_menu(adventure):
         else:
             draw_gradient_background(screen, BLUE, LIGHT_BLUE)
 
+        for cube in background_cubes:
+            cube.move()
+            cube.draw(screen)
+
         title_text = font_large.render("Select Level", True, WHITE)
         screen.blit(title_text, title_text.get_rect(center=(SCREEN_WIDTH//2, 80)))
 
@@ -1074,7 +933,15 @@ SHAPES = [
     [[1], [1, 1, 1]],  # Крюк1
     [[0, 0, 1], [1, 1, 1]],  # Крюк2
     [[1, 1, 1], [1]],  # Крюк3
-    [[1, 1, 1], [0, 0, 1]],  # Крюк4
+    [[1, 1, 1], [0, 0, 1]], # Крюк4
+    [[1], [1], [1, 1, 1]], # 3*3 крюк
+    [[0, 0, 1], [0, 0, 1], [1, 1, 1]], # 3*3 крюк
+    [[1, 1, 1], [1], [1]], # 3*3 крюк
+    [[1, 1, 1], [0, 0, 1], [0, 0, 1]], # 3*3 крюк
+    [[1], [1], [1, 1, 1]], # 3*3 крюк
+    [[0, 0, 1], [0, 0, 1], [1, 1, 1]], # 3*3 крюк
+    [[1, 1, 1], [1], [1]], # 3*3 крюк
+    [[1, 1, 1], [0, 0, 1], [0, 0, 1]] # 3*3 крюк
 ]
 
 
@@ -1090,7 +957,7 @@ class Shape:
             self.height
         )
         self.initial_position = initial_position
-        self.time_color = random.choice([BLUE, GREEN, ORANGE, RED])
+        self.time_color = random.choice(["blue", "green", "red", "orange"])
 
     def set_initial_position(self, position):
         self.initial_position = position
@@ -1104,11 +971,9 @@ class Shape:
         for r, row in enumerate(self.shape):
             for c, cell in enumerate(row):
                 if cell:
-                    pygame.draw.rect(screen, self.time_color,
-                                     (self.rect.x + c * CELL_SIZE, self.rect.y + r * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-                    pygame.draw.rect(screen, WHITE,
-                                     (self.rect.x + c * CELL_SIZE, self.rect.y + r * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-                                     1)
+                    # Рисуем спрайт вместо цветного блока
+                    sprite = BLOCK_SPRITES[self.time_color]
+                    screen.blit(sprite, (self.rect.x + c * CELL_SIZE, self.rect.y + r * CELL_SIZE))
 
 
 def show_no_moves_window():
@@ -1152,16 +1017,21 @@ class ClassicMode:
     def __init__(self):
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self.shapes = []
-        self.placed_shapes = []
-        self.dragging_shape = None
-        self.offset_x, self.offset_y = 0, 0
-        self.score = 0
-        self.high_score = self.load_high_score()
-        self.positions = [(600, 100), (600, 250), (600, 400)]
-        self.load_game_state()
+        self.placed_shapes = []  # Фигуры, которые уже размещены на поле
+        self.dragging_shape = None  # Фигура, которую перетаскивают
+        self.offset_x, self.offset_y = 0, 0  # Смещение для перетаскивания
+        self.score = 0  # Текущий счет
+        self.high_score = self.load_high_score()  # Рекорд
+        self.positions = [  # Позиции для отображения фигур
+            (600, 90),
+            (600, 250),
+            (600, 410)
+        ]
+        self.load_game_state()  # Загружаем состояние игры
 
+        # Кнопка "Назад"
         self.back_button = Button(
-            get_text("Back"),
+            "Back",
             SCREEN_WIDTH - 200,
             20,
             180,
@@ -1171,6 +1041,7 @@ class ClassicMode:
         )
 
     def load_high_score(self):
+        """Загружает рекорд из базы данных."""
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("SELECT high_score FROM scores")
@@ -1179,59 +1050,99 @@ class ClassicMode:
         return result[0] if result else 0
 
     def load_game_state(self):
+        self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+        self.shapes = []
+
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT x, y, value FROM classic_grid")
-        for x, y, value in cursor.fetchall():
-            self.grid[y][x] = value
+        # Загрузка сетки
+        cursor.execute("SELECT x, y, value, color FROM classic_grid")
+        for x, y, value, color in cursor.fetchall():
+            if value:
+                self.grid[y][x] = {'value': value, 'color': color} if color else 1
 
-        cursor.execute("SELECT shape, x, y FROM pieces WHERE mode = 'classic' AND placed = 1")
+        # Загрузка неразмещённых фигур
+        cursor.execute("SELECT shape, x, y FROM pieces WHERE mode='classic' AND placed=0")
         for shape_str, x, y in cursor.fetchall():
-            shape = eval(shape_str)
-            self.placed_shapes.append((shape, (x, y)))
+            try:
+                shape_data = ast.literal_eval(shape_str)
+                if self.validate_shape(shape_data):
+                    new_shape = Shape(shape_data, (x, y))
+                    self.shapes.append(new_shape)
+            except Exception as e:
+                print(f"Error loading shape: {e}")
 
-        cursor.execute("SELECT shape, x, y FROM pieces WHERE mode = 'classic' AND placed = 0")
-        for shape_str, x, y in cursor.fetchall():
-            shape = eval(shape_str)
-            self.shapes.append(Shape(shape, (x, y)))
+        # Загрузка счёта
+        cursor.execute("SELECT current_score, high_score FROM scores")
+        if res := cursor.fetchone():
+            self.score, self.high_score = res
 
         conn.close()
 
+        # Генерация новых фигур при необходимости
         if not self.shapes:
             self.generate_new_shapes()
 
+    def validate_shape(self, shape_data):
+        """Проверка корректности данных фигуры"""
+        if not isinstance(shape_data, list):
+            return False
+        for row in shape_data:
+            if not isinstance(row, list):
+                return False
+            for cell in row:
+                if not isinstance(cell, int):
+                    return False
+        return True
+
     def save_game_state(self):
+        print(f"Saving {len(self.shapes)} shapes")
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
 
+        # Очищаем таблицы
         cursor.execute("DELETE FROM classic_grid")
+        cursor.execute("DELETE FROM pieces WHERE mode = 'classic'")
+
+        # Сохраняем сетку
         for y, row in enumerate(self.grid):
-            for x, value in enumerate(row):
-                cursor.execute("INSERT INTO classic_grid (x, y, value) VALUES (?, ?, ?)", (x, y, value))
+            for x, cell in enumerate(row):
+                if cell != 0:
+                    if isinstance(cell, dict):
+                        cursor.execute(
+                            "INSERT INTO classic_grid (x, y, value, color) VALUES (?, ?, ?, ?)",
+                            (x, y, cell['value'], cell['color'])
+                        )
+                    else:
+                        cursor.execute(
+                            "INSERT INTO classic_grid (x, y, value) VALUES (?, ?, ?)",
+                            (x, y, 1)
+                        )
 
-        cursor.execute("DELETE FROM pieces WHERE mode = 'classic' AND placed = 1")
-        for shape, (x, y) in self.placed_shapes:
-            cursor.execute("INSERT INTO pieces (shape, x, y, mode, placed) VALUES (?, ?, ?, ?, ?)",
-                           (str(shape), x, y, "classic", 1))
-
-        cursor.execute("DELETE FROM pieces WHERE mode = 'classic' AND placed = 0")
+        # Сохраняем только неразмещённые фигуры
         for shape in self.shapes:
-            cursor.execute("INSERT INTO pieces (shape, x, y, mode, placed) VALUES (?, ?, ?, ?, ?)",
-                           (str(shape.shape), shape.rect.x, shape.rect.y, "classic", 0))
+            cursor.execute(
+                "INSERT INTO pieces (shape, x, y, mode, placed) VALUES (?, ?, ?, ?, ?)",
+                (str(shape.shape), shape.rect.x, shape.rect.y, "classic", 0)
+            )
 
-        cursor.execute("UPDATE scores SET current_score = ?, high_score = ?", (self.score, self.high_score))
+        # Обновляем счёт
+        cursor.execute("UPDATE scores SET current_score=?, high_score=?",
+                       (self.score, self.high_score))
 
         conn.commit()
         conn.close()
 
     def generate_new_shapes(self):
+        """Генерирует новые фигуры, если их нет."""
         if not self.shapes:
             for pos in self.positions:
                 shape = Shape(random.choice(SHAPES), pos)
                 self.shapes.append(shape)
 
     def can_place(self, shape, x, y):
+        """Проверяет, можно ли разместить фигуру на поле."""
         for r, row in enumerate(shape):
             for c, cell in enumerate(row):
                 if cell:
@@ -1241,42 +1152,74 @@ class ClassicMode:
                         return False
         return True
 
-    def has_moves_left(self):
-        for shape in self.shapes:
-            for y in range(GRID_SIZE - len(shape.shape) + 1):
-                for x in range(GRID_SIZE - len(shape.shape[0]) + 1):
-                    if self.can_place(shape.shape, x, y):
-                        return True
-        return False
-
     def place_shape(self, shape, x, y):
         for r, row in enumerate(shape.shape):
             for c, cell in enumerate(row):
                 if cell:
-                    self.grid[y + r][x + c] = 1
-        self.placed_shapes.append((shape.shape, (x, y)))
+                    self.grid[y + r][x + c] = {
+                        'value': 1,
+                        'color': shape.time_color
+                    }
         self.shapes.remove(shape)
         self.check_lines()
         self.save_game_state()
 
     def check_lines(self):
-        full_rows = [r for r in range(GRID_SIZE) if all(self.grid[r])]
-        full_cols = [c for c in range(GRID_SIZE) if all(self.grid[r][c] for r in range(GRID_SIZE))]
+        # Поиск заполненных линий
+        full_rows = [r for r in range(GRID_SIZE) if all(
+            cell != 0 for cell in self.grid[r]
+        )]
 
+        full_cols = [c for c in range(GRID_SIZE) if all(
+            self.grid[r][c] != 0 for r in range(GRID_SIZE)
+        )]
+
+        # Очистка линий
         for r in full_rows:
-            for c in range(GRID_SIZE):
-                self.grid[r][c] = 0
-            self.score += 10 * GRID_SIZE
+            self.grid[r] = [0] * GRID_SIZE
 
         for c in full_cols:
             for r in range(GRID_SIZE):
                 self.grid[r][c] = 0
-            self.score += 10 * GRID_SIZE
 
+        # Обновление счёта
+        self.score += 10 * GRID_SIZE * (len(full_rows) + len(full_cols))
         if self.score > self.high_score:
             self.high_score = self.score
 
+        self.save_game_state()
+
+    def update_grid_in_db(self, row=None, col=None):
+        """Обновление строки или столбца в БД"""
+        conn = sqlite3.connect(DB_NAME)
+        try:
+            cursor = conn.cursor()
+
+            if row is not None:
+                # Очистка строки
+                cursor.execute(
+                    "DELETE FROM classic_grid WHERE y=?",
+                    (row,)
+                )
+                print(f"Очищена строка {row} в БД")
+
+            if col is not None:
+                # Очистка столбца
+                cursor.execute(
+                    "DELETE FROM classic_grid WHERE x=?",
+                    (col,)
+                )
+                print(f"Очищен столбец {col} в БД")
+
+            conn.commit()
+        except Exception as e:
+            print(f"Ошибка обновления сетки в БД: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
     def reset_game(self):
+        """Сбрасывает игру."""
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self.shapes = []
         self.placed_shapes = []
@@ -1285,9 +1228,9 @@ class ClassicMode:
         self.save_game_state()
 
     def run(self, screen):
+        """Запускает основной цикл игры."""
         clock = pygame.time.Clock()
         running = True
-
         while running:
             clock.tick(FPS)
             if dark_theme:
@@ -1301,7 +1244,7 @@ class ClassicMode:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.save_game_state()
+                    self.save_game_state()  # Сохраняем состояние перед выходом
                     pygame.quit()
                     sys.exit()
 
@@ -1309,7 +1252,7 @@ class ClassicMode:
                     mouse_pos = pygame.mouse.get_pos()
 
                     if self.back_button.is_clicked(mouse_pos, True):
-                        self.save_game_state()
+                        self.save_game_state()  # Сохраняем состояние перед возвратом в меню
                         return "menu"
 
                     for shape in self.shapes:
@@ -1326,6 +1269,7 @@ class ClassicMode:
 
                         if self.can_place(self.dragging_shape.shape, grid_x, grid_y):
                             self.place_shape(self.dragging_shape, grid_x, grid_y)
+                            self.save_game_state()
                             self.generate_new_shapes()
 
                             if not self.has_moves_left():
@@ -1345,33 +1289,56 @@ class ClassicMode:
             pygame.display.flip()
 
     def draw(self, screen):
+        """Отрисовывает игровое поле, фигуры и интерфейс."""
+        # Отрисовка сетки
         for y in range(GRID_SIZE):
             for x in range(GRID_SIZE):
-                color = BLUE if self.grid[y][x] else GRAY
-                rect = pygame.Rect(100 + x * CELL_SIZE, 100 + y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-                pygame.draw.rect(screen, color, rect)
-                pygame.draw.rect(screen, WHITE, rect, 1)
+                if isinstance(self.grid[y][x], dict):  # Если клетка содержит данные о фигуре
+                    color = self.grid[y][x]['color']  # Получаем цвет фигуры
+                    sprite = BLOCK_SPRITES[color]  # Используем спрайт для этого цвета
+                    screen.blit(sprite, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE))
+                elif self.grid[y][x] == 1:  # Если клетка просто занята (без цвета)
+                    sprite = BLOCK_SPRITES["blue"]  # Используем синий цвет по умолчанию
+                    screen.blit(sprite, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE))
+                else:  # Если клетка пустая
+                    pygame.draw.rect(screen, GRAY, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                    pygame.draw.rect(screen, WHITE, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE, CELL_SIZE, CELL_SIZE), 1)
 
+        # Отрисовка фигур, которые еще не размещены на поле
         for shape in self.shapes:
             shape.draw(screen)
 
+        # Отрисовка фигуры, которую перетаскивают
         if self.dragging_shape:
             self.dragging_shape.draw(screen)
 
+        # Отрисовка счета и рекорда
         score_text = font_medium.render(f"Score: {self.score}", True, ORANGE)
-        screen.blit(score_text, (10, 10))
+        screen.blit(score_text, (10, 50))
 
-        high_score_text = font_medium.render(f"High score: {self.high_score}", True, GREEN)
-        screen.blit(high_score_text, (10, 50))
+        high_score_text = font_medium.render(f"High score: {self.high_score}", True, RED)
+        screen.blit(high_score_text, (10, 10))
 
+        # Отрисовка кнопки "Назад"
         self.back_button.draw(screen, pygame.mouse.get_pos())
 
+        # Отрисовка курсора
         mouse_pos = pygame.mouse.get_pos()
         screen.blit(cursor_image, mouse_pos)
+
+    def has_moves_left(self):
+        """Проверяет, есть ли доступные ходы для оставшихся фигур."""
+        for shape in self.shapes:
+            for y in range(GRID_SIZE - len(shape.shape) + 1):
+                for x in range(GRID_SIZE - len(shape.shape[0]) + 1):
+                    if self.can_place(shape.shape, x, y):
+                        return True
+        return False
 
 
 def play_classic():
     classic_mode = ClassicMode()
+    classic_mode.load_game_state()
     classic_mode.run(screen)
 
 
@@ -1399,23 +1366,16 @@ def toggle_music():
         pygame.mixer.music.unpause()
 
 
-def change_language(language):
-    global current_language
-    current_language = language
-
-
 def open_settings_menu():
     global dark_theme, sound_on, current_language
     running = True
-    back_button = Button(get_text("Back"), SCREEN_WIDTH - 250, SCREEN_HEIGHT - 100, 200, 50, ORANGE, (255, 200, 100))
-    sound_button = Button(get_text(
-        "Sound: ON"),
+    back_button = Button("Back", SCREEN_WIDTH - 250, SCREEN_HEIGHT - 100, 200, 50, ORANGE, (255, 200, 100))
+    sound_button = Button(
+        "Sound: ON",
         SCREEN_WIDTH // 2 - 150, 300, 300, 70, BLUE, (100, 150, 255)
     )
-    theme_toggle_button = Button(get_text("Change Theme"), SCREEN_WIDTH // 2 - 150, 400, 300, 70, GREEN,
+    theme_toggle_button = Button("Change Theme", SCREEN_WIDTH // 2 - 150, 400, 300, 70, GREEN,
                                  (100, 255, 200))
-    language_button = Button(get_text("Language: English"), SCREEN_WIDTH // 2 - 150, 200, 300, 70, BLUE,
-                             (100, 150, 255))
 
     while running:
         if dark_theme:
@@ -1426,18 +1386,17 @@ def open_settings_menu():
             cube.move()
             cube.draw(screen)
 
-        settings_text = font_large.render(get_text("Settings"), True, DARK_GRAY)
+        settings_text = font_large.render("Settings", True, DARK_GRAY)
         screen.blit(settings_text, settings_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
 
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
 
-        sound_button.text = get_text(f"Sound: {'ON' if sound_on else 'OFF'}")
+        sound_button.text = f"Sound: {'ON' if sound_on else 'OFF'}"
 
         back_button.draw(screen, mouse_pos)
         sound_button.draw(screen, mouse_pos)
         theme_toggle_button.draw(screen, mouse_pos)
-        language_button.draw(screen, mouse_pos)
 
         screen.blit(cursor_image, mouse_pos)
         pygame.display.flip()
@@ -1452,46 +1411,10 @@ def open_settings_menu():
                 elif sound_button.is_clicked(mouse_pos, mouse_pressed):
                     sound_on = not sound_on
                     toggle_music()
-                    print(get_text(f"Sound: {'ON' if sound_on else 'OFF'}"))
+                    print(f"Sound: {'ON' if sound_on else 'OFF'}")
                 elif theme_toggle_button.is_clicked(mouse_pos, mouse_pressed):
                     dark_theme = not dark_theme
-                    print(get_text(f"Theme {'Dark' if dark_theme else 'Light'}"))
-                elif language_button.is_clicked(mouse_pos, mouse_pressed):
-                    print(get_text(f"Language changed to {current_language}"))
-                    if current_language == "English":
-                        change_language("Russian")
-                        language_button.text = get_text("Language: English")
-                        back_button.text = get_text("Back")
-                        sound_button.text = get_text("Sound: ON")
-                        theme_toggle_button.text = get_text("Change Theme")
-                        for button in buttons:
-                            if button.text == "Adventure":
-                                button.text = get_text("Adventure")
-                            elif button.text == "Classic":
-                                button.text = get_text("Classic")
-                            elif button.text == "Settings":
-                                button.text = get_text("Settings")
-                            elif button.text == "Rules":
-                                button.text = get_text("Rules")
-                            elif button.text == "Donate":
-                                button.text = get_text("Donate")
-                else:
-                    change_language("English")
-                    language_button.text = get_text("Language: English")
-                    back_button.text = get_text("Back")
-                    sound_button.text = get_text("Sound: ON")
-                    theme_toggle_button.text = get_text("Change Theme")
-                    for button in buttons:
-                        if button.text == "Приключение":
-                            button.text = get_text("Adventure")
-                        elif button.text == "Классика":
-                            button.text = get_text("Classic")
-                        elif button.text == "Настройки":
-                            button.text = get_text("Settings")
-                        elif button.text == "Правила":
-                            button.text = get_text("Rules")
-                        elif button.text == "Поддержать":
-                            button.text = get_text("Donate")
+                    print(f"Theme {'Dark' if dark_theme else 'Light'}")
 
 
 def is_first_run():
@@ -1515,17 +1438,6 @@ def show_rules_window():
         "    of points to move to the next level"
     ]
 
-    rules_text_ru = [
-        "Правила:",
-        "1. Перетащите фигуры на сетку",
-        "2. Заполните строки или столбцы",
-        "3. Уничтожьте блоки, чтобы получить очки",
-        "4. Избегайте заполнения всей сетки",
-        "5. В режиме Классика наберите как можно больше очков",
-        "6. В режиме Приключения соберите необходимое количество",
-        "     очков, чтобы перейти на следующий уровень"
-    ]
-
     while running:
         if dark_theme:
             draw_gradient_background(screen, DARK_BLUE, BLUE)
@@ -1536,16 +1448,11 @@ def show_rules_window():
             cube.draw(screen)
         back_to_menu_button.draw(screen, pygame.mouse.get_pos())
         y_offset = 100
-        if current_language == 'English':
-            for line in rules_text:
-                text_surface = font_small.render(line, True, WHITE)
-                screen.blit(text_surface, (100, y_offset))
-                y_offset += 40
-        else:
-            for line in rules_text_ru:
-                text_surface = font_small.render(line, True, WHITE)
-                screen.blit(text_surface, (100, y_offset))
-                y_offset += 40
+
+        for line in rules_text:
+            text_surface = font_small.render(line, True, WHITE)
+            screen.blit(text_surface, (100, y_offset))
+            y_offset += 40
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1614,7 +1521,7 @@ def main():
             cube.move()
             cube.draw(screen)
 
-        draw_rainbow_text(get_text("Cube Cascade"), font_large, SCREEN_WIDTH // 2 - 243, 100, WHITE, screen)
+        draw_rainbow_text("Cube Cascade", font_large, SCREEN_WIDTH // 2 - 243, 100, WHITE, screen)
 
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
@@ -1627,14 +1534,14 @@ def main():
         for button in buttons:
             button.draw(screen, mouse_pos)
             if button.is_clicked(mouse_pos, mouse_pressed):
-                if button.text == "Adventure" or button.text == "Приключение":
+                if button.text == "Adventure":
                     adventure_mode = AdventureMode()
                     level_selection_menu(adventure_mode)
                     if adventure_mode.current_grid:
                         adventure_mode.current_grid.reset()
-                elif button.text == "Classic" or button.text == "Классика":
+                elif button.text == "Classic":
                     play_classic()
-                elif button.text == "Settings" or button.text == "Настройки":
+                elif button.text == "Settings":
                     open_settings_menu()
                 elif button.icon == rules_icon:
                     show_rules_window()
