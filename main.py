@@ -5,6 +5,7 @@ import random
 import time
 import os
 import ast
+
 from settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, GRID_SIZE, CELL_SIZE, icon_image, screen, sound_on, dark_theme, \
     DB_NAME, WHITE, BLACK, BLUE, RED, ORANGE, GREEN, DARK_BLUE, LIGHT_BLUE, GRAY, DARK_GRAY, PURPLE, YELLOW, \
     font_large, font_medium, font_small, clock_icon, infinity_icon, settings_icon, rules_icon, donate_icon, crown_image, \
@@ -15,7 +16,6 @@ pygame.init()
 pygame.display.set_icon(icon_image)
 pygame.display.set_caption("Cube Cascade")
 pygame.mouse.set_visible(False)
-
 for key in BLOCK_SPRITES:
     BLOCK_SPRITES[key] = pygame.transform.scale(BLOCK_SPRITES[key], (CELL_SIZE, CELL_SIZE))
 
@@ -24,11 +24,9 @@ def initialize_database():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    # Удаляем старые таблицы, если они существуют
     cursor.execute("DROP TABLE IF EXISTS classic_grid")
     cursor.execute("DROP TABLE IF EXISTS adventure_grid")
 
-    # Создаем таблицы заново с новым столбцом
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS classic_grid (
         id INTEGER PRIMARY KEY,
@@ -49,7 +47,6 @@ def initialize_database():
     )
     """)
 
-    # Остальные таблицы остаются без изменений
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS scores (
         id INTEGER PRIMARY KEY,
@@ -84,7 +81,6 @@ def initialize_database():
 
 initialize_database()
 
-
 buttons = [
     Button("Adventure", SCREEN_WIDTH // 2 - 150, 200, 300, 70, ORANGE, (255, 200, 100), icon=clock_icon,
            animation_speed=0.5),
@@ -95,7 +91,6 @@ buttons = [
     Button("", SCREEN_WIDTH // 2 - 150, 400, 125, 70, PURPLE, (150, 100, 200), icon=rules_icon, animation_speed=0.5),
     Button("", SCREEN_WIDTH // 2 + 25, 400, 125, 70, PURPLE, (150, 100, 200), icon=donate_icon, animation_speed=0.5)
 ]
-
 back_to_menu_button = Button("Back", SCREEN_WIDTH - 200, 20, 180, 50, ORANGE, (255, 200, 100),
                              animation_speed=0.5)
 
@@ -156,19 +151,14 @@ class Grid:
                 cell_data = self.grid[row][col]
                 x = 100 + col * CELL_SIZE
                 y = 100 + row * CELL_SIZE
-
                 if cell_data != 0:
-                    # Если клетка занята, рисуем спрайт
                     if isinstance(cell_data, dict):
-                        color = cell_data['color']  # Получаем цвет из данных клетки
+                        color = cell_data['color']
                     else:
-                        color = "blue"  # Запасной цвет
-
-                    # Рисуем спрайт
+                        color = "blue"
                     sprite = BLOCK_SPRITES[color]
                     screen.blit(sprite, (x, y))
                 else:
-                    # Если клетка пустая, рисуем фон
                     pygame.draw.rect(screen, GRAY, (x, y, CELL_SIZE, CELL_SIZE))
                     pygame.draw.rect(screen, WHITE, (x, y, CELL_SIZE, CELL_SIZE), 1)
 
@@ -184,14 +174,12 @@ class Grid:
         return True
 
     def place(self, shape, x, y, color):
-        """Размещает фигуру на поле с сохранением её цвета"""
         for r, row in enumerate(shape):
             for c, cell in enumerate(row):
                 if cell:
-                    # Сохраняем цвет фигуры в сетке
                     self.grid[y + r][x + c] = {
                         'value': 1,
-                        'color': color  # Используем переданный цвет
+                        'color': color
                     }
         self.check_lines()
         self.save_to_database()
@@ -332,9 +320,7 @@ class Grid:
     def save_piece(self, shape, x, y, mode):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
         shape_str = str(shape)
-
         cursor.execute("""
         INSERT INTO pieces (shape, x, y, mode) VALUES (?, ?, ?, ?)
         """, (shape_str, x, y, mode))
@@ -345,7 +331,6 @@ class Grid:
     def load_pieces(self, mode):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
         cursor.execute("""
         SELECT shape, x, y FROM pieces WHERE mode = ?
         """, (mode,))
@@ -363,9 +348,7 @@ class Grid:
     def remove_piece(self, shape, x, y, mode):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
         shape_str = str(shape)
-
         cursor.execute("""
         DELETE FROM pieces
         WHERE rowid IN (
@@ -514,7 +497,6 @@ class AdventureMode:
 
     def run_level(self, grid, level):
         shapes = self.generate_shapes(3)
-
         positions = [
             (600, 90),
             (600, 250),
@@ -687,7 +669,6 @@ class AdventureMode:
             text = font_large.render("Level Complete!", True, GREEN)
             text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
             screen.blit(text, text_rect)
-
             next_level_btn.draw(screen, pygame.mouse.get_pos())
 
             for event in pygame.event.get():
@@ -701,16 +682,13 @@ class AdventureMode:
 
             mouse_pos = pygame.mouse.get_pos()
             screen.blit(cursor_image, mouse_pos)
-
             pygame.display.flip()
             clock.tick(FPS)
 
     def show_level_failed(self, level):
         particles = []
-        start_time = time.time()
         show_message = True
         clock = pygame.time.Clock()
-
         retry_btn = Button(
             "Retry",
             SCREEN_WIDTH // 2 - 110,
@@ -751,7 +729,6 @@ class AdventureMode:
             text = font_large.render("Failed!", True, RED)
             text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
             screen.blit(text, text_rect)
-
             retry_btn.draw(screen, pygame.mouse.get_pos())
             menu_btn.draw(screen, pygame.mouse.get_pos())
 
@@ -766,10 +743,8 @@ class AdventureMode:
                         self.start_level(self.current_level)
                     elif menu_btn.is_clicked(pygame.mouse.get_pos(), True):
                         show_message = False
-
             mouse_pos = pygame.mouse.get_pos()
             screen.blit(cursor_image, mouse_pos)
-
             pygame.display.flip()
             clock.tick(FPS)
 
@@ -807,7 +782,6 @@ class SmokeParticle:
 def level_selection_menu(adventure):
     clock = pygame.time.Clock()
     running = True
-
     level_buttons = []
     button_width = 150
     button_height = 70
@@ -820,7 +794,6 @@ def level_selection_menu(adventure):
         col = i % 3
         x = start_x + col * (button_width + padding)
         y = start_y + row * (button_height + padding)
-
         if level.completed:
             color = GREEN
             hover_color = (100, 255, 100)
@@ -883,12 +856,10 @@ def level_selection_menu(adventure):
             running = False
 
         screen.blit(cursor_image, mouse_pos)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
         pygame.display.flip()
 
 
@@ -971,7 +942,6 @@ class Shape:
         for r, row in enumerate(self.shape):
             for c, cell in enumerate(row):
                 if cell:
-                    # Рисуем спрайт вместо цветного блока
                     sprite = BLOCK_SPRITES[self.time_color]
                     screen.blit(sprite, (self.rect.x + c * CELL_SIZE, self.rect.y + r * CELL_SIZE))
 
@@ -985,27 +955,26 @@ def show_no_moves_window():
         screen.fill(BLACK)
         no_moves_text = font_large.render("No Moves Left!", True, WHITE)
         screen.blit(no_moves_text, no_moves_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100)))
-
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
-
         retry_button.draw(screen, mouse_pos)
         menu_button.draw(screen, mouse_pos)
-
         mouse_pos = pygame.mouse.get_pos()
         screen.blit(cursor_image, mouse_pos)
-
         pygame.display.flip()
 
         for event in pygame.event.get():
+
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
             elif mouse_pressed:
                 if retry_button.is_clicked(mouse_pos, mouse_pressed):
                     return "retry"
                 elif menu_button.is_clicked(mouse_pos, mouse_pressed):
                     return "menu"
+
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     return "retry"
@@ -1017,19 +986,17 @@ class ClassicMode:
     def __init__(self):
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self.shapes = []
-        self.placed_shapes = []  # Фигуры, которые уже размещены на поле
-        self.dragging_shape = None  # Фигура, которую перетаскивают
-        self.offset_x, self.offset_y = 0, 0  # Смещение для перетаскивания
-        self.score = 0  # Текущий счет
-        self.high_score = self.load_high_score()  # Рекорд
-        self.positions = [  # Позиции для отображения фигур
+        self.placed_shapes = []
+        self.dragging_shape = None
+        self.offset_x, self.offset_y = 0, 0
+        self.score = 0
+        self.high_score = self.load_high_score()
+        self.positions = [
             (600, 90),
             (600, 250),
             (600, 410)
         ]
-        self.load_game_state()  # Загружаем состояние игры
-
-        # Кнопка "Назад"
+        self.load_game_state()
         self.back_button = Button(
             "Back",
             SCREEN_WIDTH - 200,
@@ -1041,7 +1008,6 @@ class ClassicMode:
         )
 
     def load_high_score(self):
-        """Загружает рекорд из базы данных."""
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("SELECT high_score FROM scores")
@@ -1052,18 +1018,15 @@ class ClassicMode:
     def load_game_state(self):
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self.shapes = []
-
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
 
-        # Загрузка сетки
         cursor.execute("SELECT x, y, value, color FROM classic_grid")
         for x, y, value, color in cursor.fetchall():
             if value:
                 self.grid[y][x] = {'value': value, 'color': color} if color else 1
-
-        # Загрузка неразмещённых фигур
         cursor.execute("SELECT shape, x, y FROM pieces WHERE mode='classic' AND placed=0")
+
         for shape_str, x, y in cursor.fetchall():
             try:
                 shape_data = ast.literal_eval(shape_str)
@@ -1073,19 +1036,15 @@ class ClassicMode:
             except Exception as e:
                 print(f"Error loading shape: {e}")
 
-        # Загрузка счёта
         cursor.execute("SELECT current_score, high_score FROM scores")
         if res := cursor.fetchone():
             self.score, self.high_score = res
 
         conn.close()
-
-        # Генерация новых фигур при необходимости
         if not self.shapes:
             self.generate_new_shapes()
 
     def validate_shape(self, shape_data):
-        """Проверка корректности данных фигуры"""
         if not isinstance(shape_data, list):
             return False
         for row in shape_data:
@@ -1097,15 +1056,11 @@ class ClassicMode:
         return True
 
     def save_game_state(self):
-        print(f"Saving {len(self.shapes)} shapes")
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
-        # Очищаем таблицы
         cursor.execute("DELETE FROM classic_grid")
         cursor.execute("DELETE FROM pieces WHERE mode = 'classic'")
 
-        # Сохраняем сетку
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 if cell != 0:
@@ -1119,30 +1074,24 @@ class ClassicMode:
                             "INSERT INTO classic_grid (x, y, value) VALUES (?, ?, ?)",
                             (x, y, 1)
                         )
-
-        # Сохраняем только неразмещённые фигуры
         for shape in self.shapes:
             cursor.execute(
                 "INSERT INTO pieces (shape, x, y, mode, placed) VALUES (?, ?, ?, ?, ?)",
                 (str(shape.shape), shape.rect.x, shape.rect.y, "classic", 0)
             )
 
-        # Обновляем счёт
         cursor.execute("UPDATE scores SET current_score=?, high_score=?",
                        (self.score, self.high_score))
-
         conn.commit()
         conn.close()
 
     def generate_new_shapes(self):
-        """Генерирует новые фигуры, если их нет."""
         if not self.shapes:
             for pos in self.positions:
                 shape = Shape(random.choice(SHAPES), pos)
                 self.shapes.append(shape)
 
     def can_place(self, shape, x, y):
-        """Проверяет, можно ли разместить фигуру на поле."""
         for r, row in enumerate(shape):
             for c, cell in enumerate(row):
                 if cell:
@@ -1165,61 +1114,48 @@ class ClassicMode:
         self.save_game_state()
 
     def check_lines(self):
-        # Поиск заполненных линий
         full_rows = [r for r in range(GRID_SIZE) if all(
             cell != 0 for cell in self.grid[r]
         )]
-
         full_cols = [c for c in range(GRID_SIZE) if all(
             self.grid[r][c] != 0 for r in range(GRID_SIZE)
         )]
 
-        # Очистка линий
         for r in full_rows:
             self.grid[r] = [0] * GRID_SIZE
-
         for c in full_cols:
             for r in range(GRID_SIZE):
                 self.grid[r][c] = 0
 
-        # Обновление счёта
         self.score += 10 * GRID_SIZE * (len(full_rows) + len(full_cols))
+
         if self.score > self.high_score:
             self.high_score = self.score
 
         self.save_game_state()
 
     def update_grid_in_db(self, row=None, col=None):
-        """Обновление строки или столбца в БД"""
         conn = sqlite3.connect(DB_NAME)
         try:
             cursor = conn.cursor()
-
             if row is not None:
-                # Очистка строки
                 cursor.execute(
                     "DELETE FROM classic_grid WHERE y=?",
                     (row,)
                 )
-                print(f"Очищена строка {row} в БД")
 
             if col is not None:
-                # Очистка столбца
                 cursor.execute(
                     "DELETE FROM classic_grid WHERE x=?",
                     (col,)
                 )
-                print(f"Очищен столбец {col} в БД")
-
             conn.commit()
         except Exception as e:
-            print(f"Ошибка обновления сетки в БД: {e}")
             conn.rollback()
         finally:
             conn.close()
 
     def reset_game(self):
-        """Сбрасывает игру."""
         self.grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self.shapes = []
         self.placed_shapes = []
@@ -1228,7 +1164,6 @@ class ClassicMode:
         self.save_game_state()
 
     def run(self, screen):
-        """Запускает основной цикл игры."""
         clock = pygame.time.Clock()
         running = True
         while running:
@@ -1244,7 +1179,7 @@ class ClassicMode:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.save_game_state()  # Сохраняем состояние перед выходом
+                    self.save_game_state()
                     pygame.quit()
                     sys.exit()
 
@@ -1252,7 +1187,7 @@ class ClassicMode:
                     mouse_pos = pygame.mouse.get_pos()
 
                     if self.back_button.is_clicked(mouse_pos, True):
-                        self.save_game_state()  # Сохраняем состояние перед возвратом в меню
+                        self.save_game_state()
                         return "menu"
 
                     for shape in self.shapes:
@@ -1284,50 +1219,38 @@ class ClassicMode:
                 elif event.type == pygame.MOUSEMOTION and self.dragging_shape:
                     self.dragging_shape.rect.x = event.pos[0] + self.offset_x
                     self.dragging_shape.rect.y = event.pos[1] + self.offset_y
-
             self.draw(screen)
             pygame.display.flip()
 
     def draw(self, screen):
-        """Отрисовывает игровое поле, фигуры и интерфейс."""
-        # Отрисовка сетки
         for y in range(GRID_SIZE):
             for x in range(GRID_SIZE):
-                if isinstance(self.grid[y][x], dict):  # Если клетка содержит данные о фигуре
-                    color = self.grid[y][x]['color']  # Получаем цвет фигуры
-                    sprite = BLOCK_SPRITES[color]  # Используем спрайт для этого цвета
+                if isinstance(self.grid[y][x], dict):
+                    color = self.grid[y][x]['color']
+                    sprite = BLOCK_SPRITES[color]
                     screen.blit(sprite, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE))
-                elif self.grid[y][x] == 1:  # Если клетка просто занята (без цвета)
-                    sprite = BLOCK_SPRITES["blue"]  # Используем синий цвет по умолчанию
+                elif self.grid[y][x] == 1:
+                    sprite = BLOCK_SPRITES["blue"]
                     screen.blit(sprite, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE))
-                else:  # Если клетка пустая
+                else:
                     pygame.draw.rect(screen, GRAY, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
                     pygame.draw.rect(screen, WHITE, (100 + x * CELL_SIZE, 100 + y * CELL_SIZE, CELL_SIZE, CELL_SIZE), 1)
 
-        # Отрисовка фигур, которые еще не размещены на поле
         for shape in self.shapes:
             shape.draw(screen)
 
-        # Отрисовка фигуры, которую перетаскивают
         if self.dragging_shape:
             self.dragging_shape.draw(screen)
 
-        # Отрисовка счета и рекорда
         score_text = font_medium.render(f"Score: {self.score}", True, ORANGE)
         screen.blit(score_text, (10, 50))
-
         high_score_text = font_medium.render(f"High score: {self.high_score}", True, RED)
         screen.blit(high_score_text, (10, 10))
-
-        # Отрисовка кнопки "Назад"
         self.back_button.draw(screen, pygame.mouse.get_pos())
-
-        # Отрисовка курсора
         mouse_pos = pygame.mouse.get_pos()
         screen.blit(cursor_image, mouse_pos)
 
     def has_moves_left(self):
-        """Проверяет, есть ли доступные ходы для оставшихся фигур."""
         for shape in self.shapes:
             for y in range(GRID_SIZE - len(shape.shape) + 1):
                 for x in range(GRID_SIZE - len(shape.shape[0]) + 1):
@@ -1345,12 +1268,10 @@ def play_classic():
 def migrate_database():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-
     try:
         cursor.execute("ALTER TABLE pieces ADD COLUMN placed INTEGER DEFAULT 0")
     except sqlite3.OperationalError as e:
         print("Column already exists:", e)
-
     conn.commit()
     conn.close()
 
@@ -1376,7 +1297,6 @@ def open_settings_menu():
     )
     theme_toggle_button = Button("Change Theme", SCREEN_WIDTH // 2 - 150, 400, 300, 70, GREEN,
                                  (100, 255, 200))
-
     while running:
         if dark_theme:
             draw_gradient_background(screen, DARK_BLUE, BLUE)
@@ -1388,19 +1308,14 @@ def open_settings_menu():
 
         settings_text = font_large.render("Settings", True, DARK_GRAY)
         screen.blit(settings_text, settings_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
-
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
-
         sound_button.text = f"Sound: {'ON' if sound_on else 'OFF'}"
-
         back_button.draw(screen, mouse_pos)
         sound_button.draw(screen, mouse_pos)
         theme_toggle_button.draw(screen, mouse_pos)
-
         screen.blit(cursor_image, mouse_pos)
         pygame.display.flip()
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -1446,6 +1361,7 @@ def show_rules_window():
         for cube in background_cubes:
             cube.move()
             cube.draw(screen)
+
         back_to_menu_button.draw(screen, pygame.mouse.get_pos())
         y_offset = 100
 
@@ -1460,6 +1376,7 @@ def show_rules_window():
                 sys.exit()
             if back_to_menu_button.is_clicked(pygame.mouse.get_pos(), pygame.mouse.get_pressed()[0]):
                 running = False
+
         mouse_pos = pygame.mouse.get_pos()
         screen.blit(cursor_image, mouse_pos)
         pygame.display.flip()
@@ -1486,7 +1403,6 @@ def show_tutorial():
         screen.blit(continue_text, continue_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)))
 
         pygame.display.flip()
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -1497,13 +1413,10 @@ def show_tutorial():
 
 def main():
     clock = pygame.time.Clock()
-    adventure_mode = AdventureMode()
-    grid = Grid
     pygame.mixer.music.load("data/background_music.mp3")
     pygame.mixer.music.set_volume(0.015)
     pygame.mixer.music.play(-1)
     screen.fill(DARK_BLUE if dark_theme else LIGHT_BLUE)
-
     if is_first_run():
         show_tutorial()
 
@@ -1522,7 +1435,6 @@ def main():
             cube.draw(screen)
 
         draw_rainbow_text("Cube Cascade", font_large, SCREEN_WIDTH // 2 - 243, 100, WHITE, screen)
-
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
 
